@@ -27,3 +27,4 @@ export 'pattern.dart';
 export 'polygon.dart';
 export 'polyline.dart';
 export 'simulation.dart';
+export 'user_interface_style.dart';

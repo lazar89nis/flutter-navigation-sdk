@@ -1178,6 +1178,37 @@ class MapViewAPIImpl {
     );
   }
 
+  /// Returns whether buildings are enabled on the map.
+  Future<bool> isBuildingsEnabled({required int viewId}) {
+    return _viewApi.isBuildingsEnabled(viewId);
+  }
+
+  /// Enable or disable buildings on the map.
+  Future<void> setBuildingsEnabled({
+    required int viewId,
+    required bool enabled,
+  }) {
+    return _viewApi.setBuildingsEnabled(viewId, enabled);
+  }
+
+  /// Returns the override user interface style for the map.
+  Future<UserInterfaceStyle?> getOverrideUserInterfaceStyle({
+    required int viewId,
+  }) async {
+    final UserInterfaceStyleDto? styleDto = await _viewApi
+        .getOverrideUserInterfaceStyle(viewId);
+    return styleDto.toUserInterfaceStyle();
+  }
+
+  /// Sets the override user interface style for the map.
+  Future<void> setOverrideUserInterfaceStyle({
+    required int viewId,
+    required UserInterfaceStyle? style,
+  }) {
+    final UserInterfaceStyleDto? styleDto = style?.toDto();
+    return _viewApi.setOverrideUserInterfaceStyle(viewId, styleDto);
+  }
+
   Stream<MapClickEvent> getMapClickEventStream({required int viewId}) {
     return _unwrapEventStream<MapClickEvent>(viewId: viewId);
   }

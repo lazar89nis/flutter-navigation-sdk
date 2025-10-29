@@ -503,4 +503,20 @@ class GoogleMapsViewMessageHandler(private val viewRegistry: GoogleMapsViewRegis
   override fun getPadding(viewId: Long): MapPaddingDto {
     return getView(viewId.toInt()).getPadding()
   }
+
+  override fun isBuildingsEnabled(viewId: Long): Boolean {
+    return getView(viewId.toInt()).isBuildingsEnabled()
+  }
+
+  override fun setBuildingsEnabled(viewId: Long, enabled: Boolean) {
+    getView(viewId.toInt()).setBuildingsEnabled(enabled)
+  }
+
+  override fun getOverrideUserInterfaceStyle(viewId: Long): UserInterfaceStyleDto? {
+    return getView(viewId.toInt()).getOverrideUserInterfaceStyle()
+  }
+
+  override fun setOverrideUserInterfaceStyle(viewId: Long, style: UserInterfaceStyleDto?) {
+    getView(viewId.toInt()).setOverrideUserInterfaceStyle(style)
+  }
 }

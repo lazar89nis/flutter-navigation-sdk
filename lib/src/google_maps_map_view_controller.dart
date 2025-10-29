@@ -445,4 +445,33 @@ class GoogleMapViewController {
       viewId: _viewId,
     );
   }
+
+  /// Returns whether buildings are enabled on the map.
+  Future<bool> isBuildingsEnabled() async {
+    return GoogleMapsNavigationPlatform.instance.viewAPI.isBuildingsEnabled(
+      viewId: _viewId,
+    );
+  }
+
+  /// Enable or disable buildings on the map.
+  Future<void> setBuildingsEnabled(bool enabled) {
+    return GoogleMapsNavigationPlatform.instance.viewAPI.setBuildingsEnabled(
+      viewId: _viewId,
+      enabled: enabled,
+    );
+  }
+
+  /// Returns the override user interface style for the map.
+  Future<UserInterfaceStyle?> getOverrideUserInterfaceStyle() async {
+    return GoogleMapsNavigationPlatform.instance.viewAPI
+        .getOverrideUserInterfaceStyle(viewId: _viewId);
+  }
+
+  /// Sets the override user interface style for the map.
+  ///
+  /// Set to `null` or [UserInterfaceStyle.unspecified] to use the system default.
+  Future<void> setOverrideUserInterfaceStyle(UserInterfaceStyle? style) {
+    return GoogleMapsNavigationPlatform.instance.viewAPI
+        .setOverrideUserInterfaceStyle(viewId: _viewId, style: style);
+  }
 }

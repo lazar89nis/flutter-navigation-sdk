@@ -145,6 +145,8 @@ abstract class ViewCreationApi {
 
 enum MapTypeDto { none, normal, satellite, terrain, hybrid }
 
+enum UserInterfaceStyleDto { unspecified, light, dark }
+
 class CameraPositionDto {
   CameraPositionDto({
     required this.bearing,
@@ -565,6 +567,12 @@ abstract class MapViewApi {
   void enableOnCameraChangedEvents(int viewId);
   void setPadding(int viewId, MapPaddingDto padding);
   MapPaddingDto getPadding(int viewId);
+
+  bool isBuildingsEnabled(int viewId);
+  void setBuildingsEnabled(int viewId, bool enabled);
+
+  UserInterfaceStyleDto? getOverrideUserInterfaceStyle(int viewId);
+  void setOverrideUserInterfaceStyle(int viewId, UserInterfaceStyleDto? style);
 }
 
 @HostApi(dartHostTestHandler: 'TestImageRegistryApi')

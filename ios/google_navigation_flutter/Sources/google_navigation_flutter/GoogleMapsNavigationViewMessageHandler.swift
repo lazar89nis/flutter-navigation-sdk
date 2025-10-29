@@ -561,4 +561,20 @@ class GoogleMapsNavigationViewMessageHandler: MapViewApi {
   func getPadding(viewId: Int64) throws -> MapPaddingDto {
     try getView(viewId).getPadding()
   }
+
+  func isBuildingsEnabled(viewId: Int64) throws -> Bool {
+    try getView(viewId).isBuildingsEnabled()
+  }
+
+  func setBuildingsEnabled(viewId: Int64, enabled: Bool) throws {
+    try getView(viewId).setBuildingsEnabled(enabled)
+  }
+
+  func getOverrideUserInterfaceStyle(viewId: Int64) throws -> UserInterfaceStyleDto? {
+    try getView(viewId).getOverrideUserInterfaceStyle()
+  }
+
+  func setOverrideUserInterfaceStyle(viewId: Int64, style: UserInterfaceStyleDto?) throws {
+    try getView(viewId).setOverrideUserInterfaceStyle(style)
+  }
 }

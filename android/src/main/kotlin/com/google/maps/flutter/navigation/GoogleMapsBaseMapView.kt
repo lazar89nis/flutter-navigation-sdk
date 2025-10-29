@@ -37,6 +37,7 @@ import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.Polygon
 import com.google.android.gms.maps.model.Polyline
+import com.google.android.gms.maps.model.MapColorScheme
 
 abstract class GoogleMapsBaseMapView(
   private val viewId: Int?,
@@ -528,6 +529,34 @@ abstract class GoogleMapsBaseMapView(
 
   fun isTrafficEnabled(): Boolean {
     return getMap().isTrafficEnabled
+  }
+
+  fun isBuildingsEnabled(): Boolean {
+    return getMap().isBuildingsEnabled
+  }
+
+  fun setBuildingsEnabled(enabled: Boolean) {
+    getMap().isBuildingsEnabled = enabled
+  }
+
+  fun getOverrideUserInterfaceStyle(): UserInterfaceStyleDto? {
+    val map = getMap()
+    return when (map.mapColorScheme) {
+      MapColorScheme.LIGHT -> UserInterfaceStyleDto.LIGHT
+      MapColorScheme.DARK -> UserInterfaceStyleDto.DARK
+      MapColorScheme.FOLLOW_SYSTEM -> UserInterfaceStyleDto.UNSPECIFIED
+      else -> UserInterfaceStyleDto.UNSPECIFIED
+    }
+  }
+
+  fun setOverrideUserInterfaceStyle(style: UserInterfaceStyleDto?) {
+    val map = getMap()
+    val colorScheme = when (style) {
+      UserInterfaceStyleDto.LIGHT -> MapColorScheme.LIGHT
+      UserInterfaceStyleDto.DARK -> MapColorScheme.DARK
+      UserInterfaceStyleDto.UNSPECIFIED, null -> MapColorScheme.FOLLOW_SYSTEM
+    }
+    map.setMapColorScheme(colorScheme)
   }
 
   fun getMyLocation(): Location? {

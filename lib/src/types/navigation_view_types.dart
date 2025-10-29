@@ -20,6 +20,20 @@ import '../../google_navigation_flutter.dart';
 /// {@category Navigation View}
 class NavigationViewRecenterButtonClickedEvent {}
 
+/// User interface style for the map view.
+/// {@category Navigation View}
+/// {@category Map View}
+enum UserInterfaceStyle {
+  /// Use the system default style.
+  unspecified,
+
+  /// Light mode.
+  light,
+
+  /// Dark mode.
+  dark,
+}
+
 /// Map type.
 /// {@category Navigation View}
 /// {@category Map View}

@@ -602,6 +602,47 @@ public class GoogleMapsNavigationView: NSObject, FlutterPlatformView, ViewSettle
     _mapView.setMinZoom(_mapView.minZoom, maxZoom: maxZoomPreference)
   }
 
+  func isBuildingsEnabled() -> Bool {
+    _mapView.isBuildingsEnabled
+  }
+
+  func setBuildingsEnabled(_ enabled: Bool) {
+    _mapView.isBuildingsEnabled = enabled
+  }
+
+  func getOverrideUserInterfaceStyle() -> UserInterfaceStyleDto? {
+    if #available(iOS 13.0, *) {
+      switch _mapView.overrideUserInterfaceStyle {
+      case .unspecified:
+        return .unspecified
+      case .light:
+        return .light
+      case .dark:
+        return .dark
+      @unknown default:
+        return .unspecified
+      }
+    }
+    return .unspecified
+  }
+
+  func setOverrideUserInterfaceStyle(_ style: UserInterfaceStyleDto?) {
+    if #available(iOS 13.0, *) {
+      guard let style = style else {
+        _mapView.overrideUserInterfaceStyle = .unspecified
+        return
+      }
+      switch style {
+      case .unspecified:
+        _mapView.overrideUserInterfaceStyle = .unspecified
+      case .light:
+        _mapView.overrideUserInterfaceStyle = .light
+      case .dark:
+        _mapView.overrideUserInterfaceStyle = .dark
+      }
+    }
+  }
+
   func getMarkers() -> [MarkerDto] {
     _markerControllers.map { $0.toMarkerDto() }
   }
