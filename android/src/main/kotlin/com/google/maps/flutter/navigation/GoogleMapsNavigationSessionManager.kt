@@ -722,7 +722,7 @@ private constructor(private val navigationSessionEventApi: NavigationSessionEven
       val options =
         NavigationUpdatesOptions.builder()
           .setNumNextStepsToPreview(numNextStepsToPreview)
-          .setGeneratedStepImagesType(GeneratedStepImagesType.NONE)
+          .setGeneratedStepImagesType(GeneratedStepImagesType.BITMAP)
           .setDisplayMetrics(displayMetrics)
           .build()
 

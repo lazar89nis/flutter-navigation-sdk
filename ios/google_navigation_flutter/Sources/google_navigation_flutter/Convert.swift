@@ -131,6 +131,13 @@ enum Convert {
   }
 
   static func convertStepInfo(_ stepInfo: GMSNavigationStepInfo) -> StepInfoDto {
+
+      /*let options = GMSNavigationStepImageOptions() //TODO add
+      options.maneuverImageSize = .square96
+      options.screenMetrics = UIScreen.mainScreen
+
+      let maneuverImage = currentStepinfo.maneuverImage(options: options) Will return image. */
+
     .init(
       distanceFromPrevStepMeters: Int64(stepInfo.distanceFromPrevStepMeters),
       timeFromPrevStepSeconds: Int64(stepInfo.timeFromPrevStepSeconds),
