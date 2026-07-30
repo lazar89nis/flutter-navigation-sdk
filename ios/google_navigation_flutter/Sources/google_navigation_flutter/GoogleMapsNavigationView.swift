@@ -82,6 +82,12 @@ public class GoogleMapsNavigationView: NSObject, FlutterPlatformView, ViewSettle
     _mapView
   }
 
+  /// Get the underlying GMSMapView instance.
+  /// Useful for instrument cluster or other contexts that need the typed map view.
+  public func getMapView() -> GMSMapView {
+    _mapView
+  }
+
   // Getter that wont return viewEventApi if viewId is missing.
   private func getViewEventApi() -> ViewEventApi? {
     if _viewId != nil {

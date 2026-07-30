@@ -16,10 +16,14 @@
 
 package com.google.maps.flutter.navigation
 
+import android.Manifest
 import android.app.Presentation
+import android.content.res.Configuration
 import android.graphics.Point
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
+import android.util.Log
+import androidx.annotation.RequiresPermission
 import androidx.car.app.AppManager
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
@@ -32,18 +36,27 @@ import androidx.car.app.navigation.model.NavigationTemplate
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import com.google.android.gms.maps.CameraUpdate
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.GoogleMapOptions
+import com.google.android.gms.maps.model.FollowMyLocationOptions
 import com.google.android.gms.maps.model.IndoorBuilding
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MapColorScheme
+import com.google.android.libraries.navigation.ForceNightMode
 import com.google.android.libraries.navigation.NavigationView
+import com.google.android.libraries.navigation.Navigator
 import com.google.android.libraries.navigation.OnNavigationUiChangedListener
 import com.google.android.libraries.navigation.PromptVisibilityChangedListener
+import kotlin.math.ln
 
 open class AndroidAutoBaseScreen(carContext: CarContext) :
   Screen(carContext), SurfaceCallback, NavigationReadyListener {
 
   companion object {
+    private const val TAG = "AndroidAutoBaseScreen"
+
     /**
      * Map options to use for Android Auto views. Can be set before the Android Auto screen is
      * created to customize map appearance.
@@ -103,6 +116,11 @@ open class AndroidAutoBaseScreen(carContext: CarContext) :
     mIsNavigationReady =
       GoogleMapsNavigatorHolder.getInitializationState() ==
         GoogleNavigatorInitializationState.INITIALIZED
+  }
+
+  /** Internal helper for zoom/recenter; reads the shared Navigator from the plugin holder. */
+  private fun getNavigator(): Navigator? {
+    return GoogleMapsNavigatorHolder.getNavigator()
   }
 
   private fun initializeSurfaceCallback() {
@@ -211,12 +229,19 @@ open class AndroidAutoBaseScreen(carContext: CarContext) :
       // My location button is non user-operable on Android Auto,
       // so keep it disabled by default for auto surfaces.
       googleMap.uiSettings.isMyLocationButtonEnabled = false
+      googleMap.uiSettings.isCompassEnabled = false
+      googleMap.uiSettings.isMapToolbarEnabled = false
 
       val viewRegistry = GoogleMapsNavigationPlugin.getInstance()?.viewRegistry
       val imageRegistry = GoogleMapsNavigationPlugin.getInstance()?.imageRegistry
       if (viewRegistry != null && imageRegistry != null) {
         mGoogleMap = googleMap
         mViewRegistry = viewRegistry
+
+        // Apply dark/light styling when AutoMapOptions did not set an explicit scheme.
+        if (autoMapOptions?.mapColorScheme == null && autoMapOptions?.forceNightMode == null) {
+          applyMapStyleForDarkMode(detectDarkMode(), googleMap, navigationView)
+        }
 
         mAutoMapView =
           GoogleMapsAutoMapView(
@@ -296,9 +321,11 @@ open class AndroidAutoBaseScreen(carContext: CarContext) :
   }
 
   override fun onScale(focusX: Float, focusY: Float, scaleFactor: Float) {
-    val update =
-      CameraUpdateFactory.zoomBy((scaleFactor - 1), Point(focusX.toInt(), focusY.toInt()))
-    mGoogleMap?.animateCamera(update) // map is set in onSurfaceAvailable.
+    // Log-scale zoom for more natural pinch response on Android Auto.
+    val zoomChangeAmount = ln(scaleFactor.toDouble()).toFloat()
+    val cameraUpdate =
+      CameraUpdateFactory.zoomBy(zoomChangeAmount, Point(focusX.toInt(), focusY.toInt()))
+    mGoogleMap?.moveCamera(cameraUpdate)
   }
 
   override fun onGetTemplate(): Template {
@@ -409,5 +436,136 @@ open class AndroidAutoBaseScreen(carContext: CarContext) :
     GoogleMapsNavigationPlugin.getInstance()?.autoViewEventApi?.onNavigationUIEnabledChanged(
       enabled
     ) {}
+  }
+
+  /** Get the navigation view instance. */
+  fun getNavigationView(): NavigationView? = mNavigationView
+
+  /** Get the GoogleMap instance. */
+  fun getGoogleMap(): GoogleMap? = mGoogleMap
+
+  /**
+   * Shared zoom logic for zoom in and zoom out.
+   * Preserves following mode during navigation if active.
+   */
+  @RequiresPermission(
+    allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION]
+  )
+  private fun performZoom(zoomDelta: Float, direction: String, standardZoomUpdate: CameraUpdate) {
+    val googleMap = mGoogleMap ?: return
+
+    try {
+      val currentZoom = googleMap.cameraPosition.zoom
+      val newZoom =
+        if (zoomDelta > 0) {
+          (currentZoom + zoomDelta).coerceAtMost(21.0f)
+        } else {
+          (currentZoom + zoomDelta).coerceAtLeast(1.0f)
+        }
+
+      val navigator = getNavigator()
+      if (navigator != null && navigator.isGuidanceRunning && googleMap.isCameraFollowingMyLocation()) {
+        try {
+          val followOptions = FollowMyLocationOptions.builder().setZoomLevel(newZoom).build()
+          googleMap.followMyLocation(GoogleMap.CameraPerspective.TILTED, followOptions)
+          Log.d(TAG, "[AndroidAuto] Zoom $direction (following): $currentZoom → $newZoom")
+        } catch (e: Exception) {
+          googleMap.animateCamera(standardZoomUpdate)
+          Log.d(TAG, "[AndroidAuto] Zoom $direction (standard fallback): $currentZoom → $newZoom")
+        }
+      } else {
+        googleMap.animateCamera(standardZoomUpdate)
+        Log.d(TAG, "[AndroidAuto] Zoom $direction (standard): $currentZoom → $newZoom")
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "[AndroidAuto] Failed to zoom $direction: ${e.message}", e)
+    }
+  }
+
+  /** Zoom in on the map. Preserves following mode during navigation if active. */
+  @RequiresPermission(
+    allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION]
+  )
+  fun zoomIn() {
+    performZoom(1.0f, "IN", CameraUpdateFactory.zoomIn())
+  }
+
+  /** Zoom out on the map. Preserves following mode during navigation if active. */
+  @RequiresPermission(
+    allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION]
+  )
+  fun zoomOut() {
+    performZoom(-1.0f, "OUT", CameraUpdateFactory.zoomOut())
+  }
+
+  /**
+   * Recenter the map on user location.
+   * Enables follow mode if navigation is active, otherwise moves camera to user location.
+   */
+  @RequiresPermission(
+    allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION]
+  )
+  fun recenter() {
+    val map = mGoogleMap ?: return
+
+    try {
+      val navigator = getNavigator()
+      if (navigator != null && navigator.isGuidanceRunning) {
+        map.followMyLocation(GoogleMap.CameraPerspective.TILTED)
+        Log.d(TAG, "[AndroidAuto] Recenter: following car (guidance active)")
+      } else {
+        val myLocation = map.myLocation
+        if (myLocation != null) {
+          val currentZoom = map.cameraPosition.zoom.coerceAtLeast(16.0f)
+          val latLng = LatLng(myLocation.latitude, myLocation.longitude)
+          map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, currentZoom))
+          Log.d(TAG, "[AndroidAuto] Recenter: centered on user location (zoom: $currentZoom)")
+        } else {
+          Log.w(TAG, "[AndroidAuto] Recenter: user location not available")
+        }
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "[AndroidAuto] Failed to recenter: ${e.message}", e)
+    }
+  }
+
+  /** Detect if Android Auto dark mode is enabled. */
+  private fun detectDarkMode(): Boolean {
+    return try {
+      carContext.isDarkMode
+    } catch (e: Exception) {
+      try {
+        val config = carContext.resources.configuration
+        (config.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+      } catch (_: Exception) {
+        false
+      }
+    }
+  }
+
+  private fun applyMapStyleForDarkMode(
+    isDarkMode: Boolean,
+    googleMap: GoogleMap,
+    navigationView: NavigationView,
+  ) {
+    try {
+      val forceNightMode =
+        if (isDarkMode) ForceNightMode.FORCE_NIGHT else ForceNightMode.FORCE_DAY
+      navigationView.setForceNightMode(forceNightMode)
+      googleMap.mapColorScheme = if (isDarkMode) MapColorScheme.DARK else MapColorScheme.LIGHT
+      Log.d(TAG, "[AndroidAuto] Map style: ${if (isDarkMode) "dark" else "light"}")
+    } catch (e: Exception) {
+      Log.e(TAG, "[AndroidAuto] Failed to apply map style: ${e.message}", e)
+    }
+  }
+
+  /**
+   * Update map style when dark mode changes.
+   * Call from Session.onCarConfigurationChanged().
+   */
+  fun updateMapStyleForDarkMode(isDarkMode: Boolean) {
+    val map = mGoogleMap ?: return
+    val navigationView = mNavigationView ?: return
+    applyMapStyleForDarkMode(isDarkMode, map, navigationView)
   }
 }
